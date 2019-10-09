@@ -1,7 +1,6 @@
 /**
  * Bowen Yin
  * 9/10/2019
- * XOR connectivity model based on the spreadsheet.
  * This program reads from a file inputs.txt, which contains the input activations in order (one in each line).
  */
 #include <iostream>
@@ -14,7 +13,7 @@ using namespace std;
 
 const double MAX_RAND = 2.0;
 const int ITER_EPOCH = 1000;
-const double MIN_ERR_CHANGE = 1E-10;
+const double MIN_ERR_CHANGE = 1E-11;
 const double LEARN_FACTOR = 0.1;
 const double LEARN_MULTIPLIER = 1.01;
 const double MAX_LEARN = 1.5;
@@ -29,8 +28,6 @@ vector<int> hiddenLayerNodes;
 vector<vector<double>> a;
 vector<vector<vector<double>>> w;
 vector<vector<vector<double>>> prevW;
-vector<double> errors;
-vector<double> prevErrors;
 vector<vector<double>> inputs;
 vector<double> targets;
 double error;
@@ -47,7 +44,7 @@ double outputFunc(double x)
 }
 
 /**
- * 
+ * Returns the derivative of the output function on the given value.
  */
 double dFunc(double x)
 {
@@ -55,62 +52,59 @@ double dFunc(double x)
 }
 
 /**
- * 
+ * Randomizes all the weights using the configured dimensions.
+ * Uses a uniform distribution between 0 and the configured maxiumum value to generate values.
  */
 void randomizeWeights()
 {
    random_device rd;
    mt19937 mt(rd());
-   //uniform_real_distribution<double> rand(0, MAX_RAND);
-   normal_distribution<double> rand(1.0, 0.5);
+   uniform_real_distribution<double> rand(0, MAX_RAND);
+   //normal_distribution<double> rand(1.0, 0.5);
+   
    for (int k = 0; k < inputNodes; k++)
       for (int j = 0; j < hiddenLayerNodes[0]; j++)
-      {
          w[0][k][j] = rand(mt);
-      }
+   
    for (int j = 0; j < hiddenLayerNodes[hiddenLayers-1]; j++)
       for (int i = 0; i < outputNodes; i++)
-      {
          w[hiddenLayers][j][i] = rand(mt);
-      }
-}
+   return;
+} // void randomizeWeights
 
 /**
- * 
+ * Calculates the partial derivative for a weight between an input and a hidden layer.
  */
 double calculateInputDerivative(int k, int j, int trainingSet, double outputs[])
 {
    double sum1 = 0.0;
    for (int K = 0; K < inputNodes; K++)
-   {
       sum1 += a[0][K] * w[0][K][j];
-   }
-   double sum2 = 0.0;
+   
+   /*double sum2 = 0.0;
    for (int J = 0; J < hiddenLayerNodes[hiddenLayers-1]; J++)
-   {
-      sum2 += a[hiddenLayers][J] * w[hiddenLayers][J][0];
-   }
-   double partial = -a[0][k] * dFunc(sum1) * (targets[trainingSet] - outputs[trainingSet]) * dFunc(sum2) * w[hiddenLayers][j][0];
+      sum2 += a[hiddenLayers][J] * w[hiddenLayers][J][0];*/
+   
+   //double partial = -a[0][k] * dFunc(sum1) * (targets[trainingSet] - outputs[trainingSet]) * dFunc(sum2) * w[hiddenLayers][j][0];
+   double partial = -a[0][k] * dFunc(sum1) * (targets[trainingSet] - outputs[trainingSet]) * dFunc(outputs[trainingSet]) * w[hiddenLayers][j][0];
    return partial;
 } // double calculateInputDerivative
 
 /**
- * 
+ * Calculates the partial derivative for a weight between a hidden layer and an output.
  */
 double calculateOutputDerivative(int j, int i, int trainingSet, double outputs[])
 {
-   double sum2 = 0.0;
+   /*double sum2 = 0.0;
    for (int J = 0; J < hiddenLayerNodes[hiddenLayers-1]; J++)
-   {
-      sum2 += a[hiddenLayers][J] * w[hiddenLayers][J][0];
-   }
-   double partial = -(targets[trainingSet] - outputs[trainingSet]) * dFunc(sum2) * a[hiddenLayers][j];
-   //cout<<"\t\t"<<(targets[0] - output)<<endl;
+      sum2 += a[hiddenLayers][J] * w[hiddenLayers][J][0];*/
+   
+   double partial = -(targets[trainingSet] - outputs[trainingSet]) * dFunc(outputs[trainingSet]) * a[hiddenLayers][j];
    return partial;
 } // double calculateOutputDerivative
 
 /**
- * 
+ * Calculates the total error of the network, using target values from the training data.
  */
 double calculateError(double outputs[])
 {
@@ -121,16 +115,15 @@ double calculateError(double outputs[])
 }
 
 /**
- * 
+ * Calculates the output values in a preconfigured network.
+ * Loops through each of the layers and fill in the activations.
  */
 double calculateOutput(int trainingSet)
 {
    for (int k = 0; k < inputNodes; k++)
-   {
       a[0][k] = inputs[trainingSet][k];
-   }
+   
    for (int n = 0; n < hiddenLayers; n++)           // compute each of the hidden layers
-   {
       for (int j = 0; j < hiddenLayerNodes[n]; j++) // loop through each node in the layer
       {
          //cout << "DEBUG: a[" << n+1 << "][" << j << "] =";
@@ -143,43 +136,35 @@ double calculateOutput(int trainingSet)
          //cout << endl;
          a[n+1][j] = outputFunc(sum); // perform activation function on the dot product
       }
-   }
+   
    for (int i = 0; i < outputNodes; i++)                         // compute the final layer of outputs
    {
       double sum = 0;
       for (int j = 0; j < hiddenLayerNodes[hiddenLayers-1]; j++) // loop through last hidden layer
-      {
          sum += a[hiddenLayers][j] * w[hiddenLayers][j][i];
-      }
       a[hiddenLayers+1][i] = outputFunc(sum); // perform activation function on the dot product
    }
    return a[hiddenLayers+1][0];
-} // void calculateOutput()
+} // void calculateOutput
 
 /**
- * 
+ * Adjusts all the weights in the network by calculating partial derivates and adjusting,
+ * based on the learning factor.
  */
 void adjustWeights(double outputs[], int trainingSet)
 {
    for (int k = 0; k < inputNodes; k++)
-   {
       for (int j = 0; j < hiddenLayerNodes[0]; j++)
-      {
          w[0][k][j] -= learningFactor * calculateInputDerivative(k, j, trainingSet, outputs);
-      }
-   }
+   
    for (int j = 0; j < hiddenLayerNodes[hiddenLayers-1]; j++)
-   {
       for (int i = 0; i < outputNodes; i++)
-      {
          w[hiddenLayers][j][i] -= learningFactor * calculateOutputDerivative(j, i, trainingSet, outputs);
-      }
-   }
-   //cout << "///////////"<<w[hiddenLayers][0][0]<<endl;
+   return;
 }
 
 /**
- * 
+ * Prints all the weights, in addition to the indexes they correspond with.
  */
 void printWeights()
 {
@@ -187,13 +172,15 @@ void printWeights()
       for (int j = 0; j < hiddenLayerNodes[n]; j++)
          for (int k = 0; k < inputNodes; k++)
             cout << n << "," << k << "," << j << " " << w[n][k][j] << endl;
+   
    for (int i = 0; i < outputNodes; i++)
       for (int j = 0; j < hiddenLayerNodes[hiddenLayers-1]; j++)
          cout << hiddenLayers << "," << j << "," << i << " " << w[hiddenLayers][j][i] << endl;
+   return;
 }
 
 /**
- * 
+ * Prints the outputs for each training set.
  */
 void printOutputs(double outputs[])
 {
@@ -203,11 +190,13 @@ void printOutputs(double outputs[])
          cout << inputs[i][j] << ",";
       cout << " " << outputs[i] << endl;
    }
+   return;
 }
 
 /**
  * Main method that creates the activation arrays and calculates the hidden and final values.
  * It first prompts the user for input and reads from the input file, then it prints out the final result after calculating.
+ * Performs a steepest descent using training data.
  */
 int main()
 {
@@ -233,10 +222,8 @@ int main()
    //double w[hiddenLayers+1][100][100]; // weights array
    int size = max(inputNodes, outputNodes);
    for (int i = 0; i < hiddenLayers; i++)
-   {
       if (hiddenLayerNodes[i] > size)
          size = hiddenLayerNodes[i];
-   }
    a.resize(hiddenLayers+2, vector<double>(size)); // 2 for input and output layer
    w.resize(hiddenLayers+1, vector<vector<double>>(size, vector<double>(size)));
    
@@ -252,13 +239,11 @@ int main()
             weights >> w[0][k][j];
       for (int j = 0; j < hiddenLayerNodes[hiddenLayers-1]; j++)
          for (int i = 0; i < outputNodes; i++)
-            weights >> w[0][j][i];
+            weights >> w[hiddenLayers][j][i];
       weights.close();
    }
    else
-   {
       randomizeWeights();
-   }
    cout << endl << "Initial weights:" << endl;
    printWeights();
    
@@ -268,9 +253,8 @@ int main()
    targets.resize(trainingSets);
    for (int i = 0; i < trainingSets; i++)
    {
-      for (int j = 0; j < inputNodes; j++) {
+      for (int j = 0; j < inputNodes; j++)
          training >> inputs[i][j];
-      }
       training >> targets[i];
    }
    training.close();
@@ -283,9 +267,7 @@ int main()
    
    double outputs[trainingSets];
    for (int i = 0; i < trainingSets; i++)
-   {
       outputs[i] = calculateOutput(i);
-   }
    //cout << outputs[0] << "\t" << outputs[1] << "\t" << outputs[2] << "\t" << outputs[3] << endl;
    error = calculateError(outputs);
    prevW = w;
@@ -298,11 +280,12 @@ int main()
           learningFactor != 0)
    {
       prevError = error;
-      if (index >= trainingSets) index = 0;
+      
+      if (index >= trainingSets)
+         index = 0;
       for (int k = 0; k < inputNodes; k++)
-      {
          a[0][k] = inputs[index][k];
-      }
+      
       calculateOutput(index);
       adjustWeights(outputs, index);
       //printWeights();
@@ -313,18 +296,17 @@ int main()
       error = calculateError(outputs);
       if (error < prevError)
       {
-         //cout << "ERRDOWN" << endl;
          prevW = w;
          learningFactor *= LEARN_MULTIPLIER;
-         if (learningFactor > MAX_LEARN) learningFactor = MAX_LEARN;
+         if (learningFactor > MAX_LEARN)
+            learningFactor = MAX_LEARN;
       }
       else
       {
-         //cout << "ERRUP" << endl;
          w = prevW;
-         //outputs[index] = calculateOutput(index);
          learningFactor /= LEARN_MULTIPLIER;
       }
+      
       if (iterations % ITER_EPOCH == 0)
       {
          cout << "Iteration " << iterations << "\t";
@@ -333,7 +315,8 @@ int main()
       }
       iterations++;
       index++;
-   } // while iterations <= MAX_ITERATIONS
+   } // while termination conditions have not been reached
+   
    cout << endl << "Iterations: " << iterations << endl;
    cout << "Final error: " << error << endl;
    cout << "Reason for termination: ";
@@ -341,12 +324,13 @@ int main()
    else if (error < ERR_THRESHOLD) cout << "Below minimum error threshold.";
    else if (abs(error-prevError) < MIN_ERR_CHANGE) cout << "Error change below allowed minimum.";
    else if (learningFactor == 0) cout << "Learning factor reached zero.";
+   
    cout << endl << endl << "Weights:" << endl;
    printWeights();
    cout << endl << "Outputs:" << endl;
    printOutputs(outputs);
    
    auto end = chrono::high_resolution_clock::now();
-   cout << endl << "Execution time: " << chrono::duration_cast<chrono::milliseconds>(end-start).count() << " ms" << endl;
+   cout << endl << "Execution time: " << chrono::duration_cast<chrono::milliseconds>(end-start).count() << " ms!!!" << endl;
    return 0;
 } // int main()
