@@ -14,7 +14,7 @@ using namespace std;
 
 const double MAX_RAND = 2.0;
 const int ITER_EPOCH = 1000;
-const double MIN_ERR_CHANGE = 1E-9;
+const double MIN_ERR_CHANGE = 1E-10;
 const double LEARN_FACTOR = 0.1;
 const double LEARN_MULTIPLIER = 1.01;
 const double MAX_LEARN = 1.5;
@@ -193,6 +193,19 @@ void printWeights()
 }
 
 /**
+ * 
+ */
+void printOutputs(double outputs[])
+{
+   for (int i = 0; i < trainingSets; i++)
+   {
+      for (int j = 0; j < inputNodes; j++)
+         cout << inputs[i][j] << ",";
+      cout << " " << outputs[i] << endl;
+   }
+}
+
+/**
  * Main method that creates the activation arrays and calculates the hidden and final values.
  * It first prompts the user for input and reads from the input file, then it prints out the final result after calculating.
  */
@@ -200,6 +213,7 @@ int main()
 {
    ios_base::sync_with_stdio(false);
    cin.tie(0);
+   
    // prompt the user for number of input nodes, output nodes, and hidden layers
    cout << "Input nodes: ";
    cin >> inputNodes;
@@ -217,8 +231,14 @@ int main()
    
    //double a[hiddenLayers+2][100];      // activations array
    //double w[hiddenLayers+1][100][100]; // weights array
-   a.resize(hiddenLayers+2, vector<double>(100)); // 2 for input and output layer
-   w.resize(hiddenLayers+1, vector<vector<double>>(100, vector<double>(100)));
+   int size = max(inputNodes, outputNodes);
+   for (int i = 0; i < hiddenLayers; i++)
+   {
+      if (hiddenLayerNodes[i] > size)
+         size = hiddenLayerNodes[i];
+   }
+   a.resize(hiddenLayers+2, vector<double>(size)); // 2 for input and output layer
+   w.resize(hiddenLayers+1, vector<vector<double>>(size, vector<double>(size)));
    
    string response;
    cout << "Randomize weights? (y/n) ";
@@ -239,7 +259,7 @@ int main()
    {
       randomizeWeights();
    }
-   cout << "Initial weights:" << endl;
+   cout << endl << "Initial weights:" << endl;
    printWeights();
    
    ifstream training("training.txt");
@@ -266,12 +286,12 @@ int main()
    {
       outputs[i] = calculateOutput(i);
    }
-   cout << outputs[0] << "\t" << outputs[1] << "\t" << outputs[2] << "\t" << outputs[3] << endl;
+   //cout << outputs[0] << "\t" << outputs[1] << "\t" << outputs[2] << "\t" << outputs[3] << endl;
    error = calculateError(outputs);
    prevW = w;
    
    int index = 0;
-   int iterations = 0;
+   int iterations = 1;
    while (iterations <= MAX_ITERATIONS &&
           error >= ERR_THRESHOLD &&
           abs(error-prevError) >= MIN_ERR_CHANGE &&
@@ -314,17 +334,19 @@ int main()
       iterations++;
       index++;
    } // while iterations <= MAX_ITERATIONS
-   cout << "Iterations: " << iterations << endl;
+   cout << endl << "Iterations: " << iterations << endl;
    cout << "Final error: " << error << endl;
    cout << "Reason for termination: ";
    if (iterations > MAX_ITERATIONS) cout << "Exceeded max iterations.";
    else if (error < ERR_THRESHOLD) cout << "Below minimum error threshold.";
    else if (abs(error-prevError) < MIN_ERR_CHANGE) cout << "Error change below allowed minimum.";
    else if (learningFactor == 0) cout << "Learning factor reached zero.";
-   cout << endl << "Weights:" << endl;
+   cout << endl << endl << "Weights:" << endl;
    printWeights();
+   cout << endl << "Outputs:" << endl;
+   printOutputs(outputs);
    
    auto end = chrono::high_resolution_clock::now();
-   cout << "Execution time: " << chrono::duration_cast<chrono::milliseconds>(end-start).count() << " ms" << endl;
+   cout << endl << "Execution time: " << chrono::duration_cast<chrono::milliseconds>(end-start).count() << " ms" << endl;
    return 0;
 } // int main()
