@@ -1,0 +1,19 @@
+2.0
+1000
+1E-11
+0.1
+1.01
+1.5
+100000
+1E-3
+---------------
+RUNTIME OPTIONS
+---------------
+MAX_RAND:         maximum value for a weight when randomized
+ITER_EPOCH:       number of iterations between printing out progress
+MIN_ERR_CHANGE:   minimum error change (for termination conditions)
+LEARN_FACTOR:     initial learning factor (lambda)
+LEARN_MULTIPLIER: number to multiply the learning factor by when adjusting weights
+MAX_LEARN:        learning factor will be capped at this value
+MAX_ITERATIONS:   maximum number of iterations (for termination conditions)
+ERR_THRESHOLD:    threshold for the total error (for termination conditions)

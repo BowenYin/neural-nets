@@ -11,14 +11,14 @@
 #include <chrono>
 using namespace std;
 
-const double MAX_RAND = 2.0;
-const int ITER_EPOCH = 1000;
-const double MIN_ERR_CHANGE = 1E-11;
-const double LEARN_FACTOR = 0.1;
-const double LEARN_MULTIPLIER = 1.01;
-const double MAX_LEARN = 1.5;
-const int MAX_ITERATIONS = 100000;
-const double ERR_THRESHOLD = 1E-2;
+double MAX_RAND;
+int ITER_EPOCH;
+double MIN_ERR_CHANGE;
+double LEARN_FACTOR;
+double LEARN_MULTIPLIER;
+double MAX_LEARN;
+int MAX_ITERATIONS;
+double ERR_THRESHOLD;
 
 int inputNodes;
 int outputNodes;
@@ -32,7 +32,7 @@ vector<vector<double>> inputs;
 vector<double> targets;
 double error;
 double prevError;
-double learningFactor = LEARN_FACTOR;
+double learningFactor;
 
 /**
  * Threshold function that is executed on every activation calculation.
@@ -111,7 +111,7 @@ double calculateError(double outputs[])
    double error = 0.0;
    for (int i = 0; i < trainingSets; i++)
       error += (targets[i] - outputs[i]) * (targets[i] - outputs[i]);
-   return error / 2;
+   return error / 2.0;
 }
 
 /**
@@ -202,6 +202,19 @@ int main()
 {
    ios_base::sync_with_stdio(false);
    cin.tie(0);
+   
+   // load in runtime options from configuration file
+   ifstream options("options.txt");
+   options >> MAX_RAND;
+   options >> ITER_EPOCH;
+   options >> MIN_ERR_CHANGE;
+   options >> LEARN_FACTOR;
+   options >> LEARN_MULTIPLIER;
+   options >> MAX_LEARN;
+   options >> MAX_ITERATIONS;
+   options >> ERR_THRESHOLD;
+   options.close();
+   learningFactor = LEARN_FACTOR;
    
    // prompt the user for number of input nodes, output nodes, and hidden layers
    cout << "Input nodes: ";
