@@ -4,3 +4,8 @@
 0.0954409
 0.094553
 1.87164
+--------------
+MANUAL WEIGHTS
+--------------
+First layer of weights is listed first, from top to bottom in the network, one in each line.
+Second layer of weights is listed next, from top to bottom in the network, one in each line.

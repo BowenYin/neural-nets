@@ -29,7 +29,8 @@ vector<vector<double>> a;
 vector<vector<vector<double>>> w;
 vector<vector<vector<double>>> prevW;
 vector<vector<double>> inputs;
-vector<double> targets;
+vector<vector<double>> outputs;
+vector<vector<double>> targets;
 double error;
 double prevError;
 double learningFactor;
@@ -75,7 +76,7 @@ void randomizeWeights()
 /**
  * Calculates the partial derivative for a weight between an input and a hidden layer.
  */
-double calculateInputDerivative(int k, int j, int trainingSet, double outputs[])
+double calculateInputDerivative(int k, int j, int trainingSet)
 {
    double sum1 = 0.0;
    for (int K = 0; K < inputNodes; K++)
@@ -84,33 +85,35 @@ double calculateInputDerivative(int k, int j, int trainingSet, double outputs[])
    /*double sum2 = 0.0;
    for (int J = 0; J < hiddenLayerNodes[hiddenLayers-1]; J++)
       sum2 += a[hiddenLayers][J] * w[hiddenLayers][J][0];*/
-   
-   //double partial = -a[0][k] * dFunc(sum1) * (targets[trainingSet] - outputs[trainingSet]) * dFunc(sum2) * w[hiddenLayers][j][0];
-   double partial = -a[0][k] * dFunc(sum1) * (targets[trainingSet] - outputs[trainingSet]) * dFunc(outputs[trainingSet]) * w[hiddenLayers][j][0];
+   double sum2 = 0.0;
+   for (int I = 0; I < outputNodes; I++)
+      sum2 += (targets[trainingSet][I] - outputs[trainingSet][I]) * dFunc(outputs[trainingSet][I]) * w[hiddenLayers][j][I];
+   double partial = -a[0][k] * dFunc(sum1) * sum2;
    return partial;
 } // double calculateInputDerivative
 
 /**
  * Calculates the partial derivative for a weight between a hidden layer and an output.
  */
-double calculateOutputDerivative(int j, int i, int trainingSet, double outputs[])
+double calculateOutputDerivative(int j, int i, int trainingSet)
 {
    /*double sum2 = 0.0;
    for (int J = 0; J < hiddenLayerNodes[hiddenLayers-1]; J++)
       sum2 += a[hiddenLayers][J] * w[hiddenLayers][J][0];*/
    
-   double partial = -(targets[trainingSet] - outputs[trainingSet]) * dFunc(outputs[trainingSet]) * a[hiddenLayers][j];
+   double partial = -(targets[trainingSet][i] - outputs[trainingSet][i]) * dFunc(outputs[trainingSet][i]) * a[hiddenLayers][j];
    return partial;
 } // double calculateOutputDerivative
 
 /**
  * Calculates the total error of the network, using target values from the training data.
  */
-double calculateError(double outputs[])
+double calculateError()
 {
    double error = 0.0;
-   for (int i = 0; i < trainingSets; i++)
-      error += (targets[i] - outputs[i]) * (targets[i] - outputs[i]);
+   for (int t = 0; t < trainingSets; t++)
+      for (int i = 0; i < outputNodes; i++)
+      error += (targets[t][i] - outputs[t][i]) * (targets[t][i] - outputs[t][i]);
    return error / 2.0;
 }
 
@@ -118,7 +121,7 @@ double calculateError(double outputs[])
  * Calculates the output values in a preconfigured network.
  * Loops through each of the layers and fill in the activations.
  */
-double calculateOutput(int trainingSet)
+void calculateOutput(int trainingSet)
 {
    for (int k = 0; k < inputNodes; k++)
       a[0][k] = inputs[trainingSet][k];
@@ -144,22 +147,21 @@ double calculateOutput(int trainingSet)
          sum += a[hiddenLayers][j] * w[hiddenLayers][j][i];
       a[hiddenLayers+1][i] = outputFunc(sum); // perform activation function on the dot product
    }
-   return a[hiddenLayers+1][0];
 } // void calculateOutput
 
 /**
  * Adjusts all the weights in the network by calculating partial derivates and adjusting,
  * based on the learning factor.
  */
-void adjustWeights(double outputs[], int trainingSet)
+void adjustWeights(int trainingSet)
 {
    for (int k = 0; k < inputNodes; k++)
       for (int j = 0; j < hiddenLayerNodes[0]; j++)
-         w[0][k][j] -= learningFactor * calculateInputDerivative(k, j, trainingSet, outputs);
+         w[0][k][j] -= learningFactor * calculateInputDerivative(k, j, trainingSet);
    
    for (int j = 0; j < hiddenLayerNodes[hiddenLayers-1]; j++)
       for (int i = 0; i < outputNodes; i++)
-         w[hiddenLayers][j][i] -= learningFactor * calculateOutputDerivative(j, i, trainingSet, outputs);
+         w[hiddenLayers][j][i] -= learningFactor * calculateOutputDerivative(j, i, trainingSet);
    return;
 }
 
@@ -182,13 +184,15 @@ void printWeights()
 /**
  * Prints the outputs for each training set.
  */
-void printOutputs(double outputs[])
+void printOutputs()
 {
-   for (int i = 0; i < trainingSets; i++)
+   for (int t = 0; t < trainingSets; t++)
    {
-      for (int j = 0; j < inputNodes; j++)
-         cout << inputs[i][j] << ",";
-      cout << " " << outputs[i] << endl;
+      for (int i = 0; i < inputNodes; i++)
+      {
+         cout << inputs[t][i] << ",";
+         cout << " " << outputs[t][i] << endl;
+      }
    }
    return;
 }
@@ -200,11 +204,26 @@ void printOutputs(double outputs[])
  */
 int main()
 {
+   // included for faster I/O
    ios_base::sync_with_stdio(false);
    cin.tie(0);
    
+   cout << "Press return to use defaults." << endl;
+   
+   cout << "Configuration file: (./options.txt) ";
+   string optionsFile;
+   getline(cin, optionsFile);
+   if (optionsFile.empty())
+      optionsFile = "./options.txt";
+   
+   cout << "Training data file: (./training.txt) ";
+   string trainingFile;
+   getline(cin, trainingFile);
+   if (trainingFile.empty())
+      trainingFile = "./training.txt";
+   
    // load in runtime options from configuration file
-   ifstream options("options.txt");
+   ifstream options(optionsFile);
    options >> MAX_RAND;
    options >> ITER_EPOCH;
    options >> MIN_ERR_CHANGE;
@@ -240,13 +259,19 @@ int main()
    a.resize(hiddenLayers+2, vector<double>(size)); // 2 for input and output layer
    w.resize(hiddenLayers+1, vector<vector<double>>(size, vector<double>(size)));
    
+   cout << "Randomize weights? (Y/n) ";
+   cin.ignore();
    string response;
-   cout << "Randomize weights? (y/n) ";
-   cin >> response;
-   auto start = chrono::high_resolution_clock::now();
+   getline(cin, response);
+   auto start = chrono::high_resolution_clock::now(); // start tracking execution time
    if (response.substr(0, 1) == "n" || response.substr(0, 1) == "N")
    {
-      ifstream weights("weights.txt"); // read weights from file
+      cout << "Weights file: (./weights.txt) ";
+      string weightsFile;
+      getline(cin, weightsFile);
+      if (weightsFile.empty())
+         weightsFile = "./weights.txt";
+      ifstream weights(weightsFile); // read weights from file
       for (int k = 0; k < inputNodes; k++)
          for (int j = 0; j < hiddenLayerNodes[0]; j++)
             weights >> w[0][k][j];
@@ -260,15 +285,16 @@ int main()
    cout << endl << "Initial weights:" << endl;
    printWeights();
    
-   ifstream training("training.txt");
+   ifstream training(trainingFile);
    training >> trainingSets;
    inputs.resize(trainingSets, vector<double>(inputNodes));
-   targets.resize(trainingSets);
-   for (int i = 0; i < trainingSets; i++)
+   targets.resize(trainingSets, vector<double>(outputNodes));
+   for (int t = 0; t < trainingSets; t++)
    {
-      for (int j = 0; j < inputNodes; j++)
-         training >> inputs[i][j];
-      training >> targets[i];
+      for (int i = 0; i < inputNodes; i++)
+         training >> inputs[t][i];
+      for (int i = 0; i < outputNodes; i++)
+         training >> targets[t][i];
    }
    training.close();
    
@@ -278,19 +304,21 @@ int main()
       inputs >> a[0][i];
    }*/
    
-   double outputs[trainingSets];
-   for (int i = 0; i < trainingSets; i++)
-      outputs[i] = calculateOutput(i);
+   //double outputs[trainingSets][outputNodes];
+   outputs.resize(trainingSets, vector<double>(outputNodes));
+   for (int t = 0; t < trainingSets; t++)
+   {
+      calculateOutput(t);
+      for (int i = 0; i < outputNodes; i++)
+         outputs[t][i] = a[hiddenLayers+1][i];
+   }
    //cout << outputs[0] << "\t" << outputs[1] << "\t" << outputs[2] << "\t" << outputs[3] << endl;
-   error = calculateError(outputs);
+   error = calculateError();
    prevW = w;
    
    int index = 0;
    int iterations = 1;
-   while (iterations <= MAX_ITERATIONS &&
-          error >= ERR_THRESHOLD &&
-          abs(error-prevError) >= MIN_ERR_CHANGE &&
-          learningFactor != 0)
+   while (iterations <= MAX_ITERATIONS && error >= ERR_THRESHOLD && abs(error-prevError) >= MIN_ERR_CHANGE && learningFactor != 0)
    {
       prevError = error;
       
@@ -300,13 +328,17 @@ int main()
          a[0][k] = inputs[index][k];
       
       calculateOutput(index);
-      adjustWeights(outputs, index);
+      adjustWeights(index);
       //printWeights();
-      for (int i = 0; i < trainingSets; i++)
-         outputs[i] = calculateOutput(i);
+      for (int t = 0; t < trainingSets; t++)
+      {
+         calculateOutput(t);
+         for (int i = 0; i < outputNodes; i++)
+            outputs[t][i] = a[hiddenLayers+1][i];
+      }
       //cout << outputs[0] << "\t" << outputs[1] << "\t" << outputs[2] << "\t" << outputs[3] << endl;
       
-      error = calculateError(outputs);
+      error = calculateError();
       if (error < prevError)
       {
          prevW = w;
@@ -330,7 +362,7 @@ int main()
       index++;
    } // while termination conditions have not been reached
    
-   cout << endl << "Iterations: " << iterations << endl;
+   cout << endl << "Iterations: " << iterations-1 << endl;
    cout << "Final error: " << error << endl;
    cout << "Reason for termination: ";
    if (iterations > MAX_ITERATIONS) cout << "Exceeded max iterations.";
@@ -341,7 +373,7 @@ int main()
    cout << endl << endl << "Weights:" << endl;
    printWeights();
    cout << endl << "Outputs:" << endl;
-   printOutputs(outputs);
+   printOutputs();
    
    auto end = chrono::high_resolution_clock::now();
    cout << endl << "Execution time: " << chrono::duration_cast<chrono::milliseconds>(end-start).count() << " ms!!!" << endl;
