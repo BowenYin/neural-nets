@@ -1,11 +1,12 @@
 2.0
 1000
-1E-12
+0
 0.1
 1.01
 1.5
-100000
+1000000
 1E-3
+1
 ---------------
 RUNTIME OPTIONS
 ---------------
@@ -17,3 +18,4 @@ LEARN_MULTIPLIER: number to multiply the learning factor by when adjusting weigh
 MAX_LEARN:        learning factor will be capped at this value
 MAX_ITERATIONS:   maximum number of iterations (for termination conditions)
 ERR_THRESHOLD:    threshold for the total error (for termination conditions)
+ROLLBACK_WEIGHTS: whether to roll back weights (0 for no, 1 for yes)
