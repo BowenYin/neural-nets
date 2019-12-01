@@ -379,8 +379,9 @@ int main()
       cout << "Error change below allowed minimum.";
    else if (learningFactor == 0)
       cout << "Learning factor reached zero.";
+   cout << endl << "Lambda: " << learningFactor << endl;
    
-   cout << endl << endl << "Weights:" << endl;
+   cout << endl << "Weights:" << endl;
    printWeights();
    cout << endl << "Outputs:" << endl;
    printOutputs();
