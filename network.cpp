@@ -148,7 +148,7 @@ void calculateOutput(int trainingSet)
       double sum = 0.0;
       for (int j = 0; j < hiddenLayerNodes[hiddenLayers-1]; j++) // loop through last hidden layer
          sum += a[hiddenLayers][j] * w[hiddenLayers][j][i];
-      a[hiddenLayers+1][i] = outputFunc(sum) * (2e24-1);
+      a[hiddenLayers+1][i] = outputFunc(sum);
    }
 } // void calculateOutput
 
@@ -173,14 +173,14 @@ void adjustWeights(int trainingSet)
  */
 void printWeights()
 {
-   for (int n = 0; n < hiddenLayers; n++)
+   /*for (int n = 0; n < hiddenLayers; n++)
       for (int j = 0; j < hiddenLayerNodes[n]; j++)
          for (int k = 0; k < inputNodes; k++)
             cout << n << "," << k << "," << j << " " << w[n][k][j] << endl;
    
    for (int i = 0; i < outputNodes; i++)
       for (int j = 0; j < hiddenLayerNodes[hiddenLayers-1]; j++)
-         cout << hiddenLayers << "," << j << "," << i << " " << w[hiddenLayers][j][i] << endl;
+         cout << hiddenLayers << "," << j << "," << i << " " << w[hiddenLayers][j][i] << endl;*/
    return;
 }
 
@@ -194,7 +194,7 @@ void printOutputs()
       for (int i = 0; i < inputNodes; i++)
          cout << inputs[t][i] << ",";
       for (int i = 0; i < outputNodes; i++)
-         cout << "\t" << outputs[t][i];
+         cout << "\t" << outputs[t][i] * 16777216.0;
       cout << endl;
    }
    return;
@@ -309,10 +309,13 @@ int main()
       for (int i = 0; i < inputNodes; i++)
       {
          training >> inputs[t][i];
-         inputs[t][i] /= 2e24-1;
+         inputs[t][i] /= 16777216.0;
       }
       for (int i = 0; i < outputNodes; i++)
+      {
          training >> targets[t][i];
+         targets[t][i] /= 16777216.0;
+      }
    }
    training.close();
    
@@ -364,7 +367,8 @@ int main()
       if (iterations % ITER_EPOCH == 0) // prints out progress every so often
       {
          cout << "Iteration " << iterations << "\t";
-         cout << "Error: " << error << "\n";
+         cout << "Error: " << error << "\t";
+         cout << "Learn: " << learningFactor << "\n";
       }
       iterations++;
       index++;
@@ -386,6 +390,10 @@ int main()
       cout << "Learning factor reached zero.";
    cout << endl << "Lambda: " << learningFactor << endl;
    
+   ofstream outFile;
+   outFile.open("out.txt");
+   for (int i = 0; i < outputNodes; i++)
+      outFile << outputs[0][i] * 16777216.0 << "\n";
    cout << endl << "Weights:" << endl;
    printWeights();
    cout << endl << "Outputs:" << endl;

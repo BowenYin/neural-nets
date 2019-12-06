@@ -798,12 +798,14 @@ typedef RGBQUAD FAR* LPRGBQUAD;
          rgbQuad_rgbReserved = 0;
          
          PrintWriter pelOut = new PrintWriter(new BufferedWriter(new FileWriter("pels.txt")));
+         BufferedReader pelIn = new BufferedReader(new FileReader("out.txt"));
 
          for (i = bmpInfoHeader_biHeight - 1; i >= 0; --i)    // write over the rows (in the usual inverted format)
             {
             for (j = 0; j < bmpInfoHeader_biWidth; ++j) // and the columns
                {
-               pel = imageArray[i][j];
+               //pel = imageArray[i][j];
+               pel = Double.valueOf(pelIn.readLine()).intValue();
                pelOut.println(pel);
                rgbQuad_rgbBlue  = pel & 0x00FF;
                rgbQuad_rgbGreen = (pel >> 8)  & 0x00FF;
@@ -825,6 +827,7 @@ typedef RGBQUAD FAR* LPRGBQUAD;
 
          out.close();
          fstream.close();
+         pelIn.close();
          pelOut.close();
          }
       catch (Exception e)
