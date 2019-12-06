@@ -16,6 +16,7 @@
 #include <chrono>
 using namespace std;
 
+double MIN_RAND;
 double MAX_RAND;
 int ITER_EPOCH;
 double MIN_ERR_CHANGE;
@@ -66,7 +67,7 @@ void randomizeWeights()
 {
    random_device rd;
    mt19937 mt(rd());
-   uniform_real_distribution<double> rand(0.0, MAX_RAND);
+   uniform_real_distribution<double> rand(MIN_RAND, MAX_RAND);
    //normal_distribution<double> rand(1.0, 0.5);
    
    for (int k = 0; k < inputNodes; k++)
@@ -147,7 +148,7 @@ void calculateOutput(int trainingSet)
       double sum = 0.0;
       for (int j = 0; j < hiddenLayerNodes[hiddenLayers-1]; j++) // loop through last hidden layer
          sum += a[hiddenLayers][j] * w[hiddenLayers][j][i];
-      a[hiddenLayers+1][i] = outputFunc(sum);
+      a[hiddenLayers+1][i] = outputFunc(sum) * (2e24-1);
    }
 } // void calculateOutput
 
@@ -207,8 +208,8 @@ void printOutputs()
 int main()
 {
    // included for faster I/O
-   ios_base::sync_with_stdio(false);
-   cin.tie(0);
+   //ios_base::sync_with_stdio(false);
+   //cin.tie(0);
    
    cout << "Press return to use defaults (indicated in parentheses)." << endl;
    
@@ -226,6 +227,7 @@ int main()
    
    // load in runtime options from configuration file
    ifstream options(optionsFile);
+   options >> MIN_RAND;
    options >> MAX_RAND;
    options >> ITER_EPOCH;
    options >> MIN_ERR_CHANGE;
@@ -305,7 +307,10 @@ int main()
    for (int t = 0; t < trainingSets; t++)
    {
       for (int i = 0; i < inputNodes; i++)
+      {
          training >> inputs[t][i];
+         inputs[t][i] /= 2e24-1;
+      }
       for (int i = 0; i < outputNodes; i++)
          training >> targets[t][i];
    }

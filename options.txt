@@ -1,15 +1,17 @@
-2.0
-1000
+-0.02
+0.02
+1
 0
 5
 1.01
 25
-1000000
+100
 1E-3
 1
 ---------------
 RUNTIME OPTIONS
 ---------------
+MIN_RAND:         minimum value for a weight when randomized
 MAX_RAND:         maximum value for a weight when randomized
 ITER_EPOCH:       number of iterations between printing out progress
 MIN_ERR_CHANGE:   minimum error change (for termination conditions)
