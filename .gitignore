@@ -1,3 +1,6 @@
 .DS_Store
 .vscode
 DIBDUMP C UTILITY
+*.class
+tempCodeRunnerFile.cpp
+network
