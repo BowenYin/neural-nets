@@ -163,20 +163,28 @@ void runNetwork(int trainingSet) {
       fill(v.begin(), v.end(), 0.0);
    for (auto &v: omega)
       fill(v.begin(), v.end(), 0.0);
-   for (int j = 0; j < hiddenLayerNodes[0]; j++) {
-      for (int k = 0; k < inputNodes; k++) {
-         theta[hiddenLayers][j] += a[0][k]*w[0][k][j];
-      }
-      a[hiddenLayers][j] = outputFunc(theta[hiddenLayers][j]);
-   }
+   
    for (int i = 0; i < outputNodes; i++) {
+      for (auto &v: theta)
+         fill(v.begin(), v.end(), 0.0);
+      for (int j = 0; j < hiddenLayerNodes[0]; j++) {
+         for (int k = 0; k < inputNodes; k++) {
+            theta[hiddenLayers][j] += a[0][k]*w[0][k][j];
+         }
+         a[hiddenLayers][j] = outputFunc(theta[hiddenLayers][j]);
+         theta[hiddenLayers+1][i] += a[hiddenLayers][j]*w[hiddenLayers][j][i];
+      }
+      a[hiddenLayers+1][i] = outputFunc(theta[hiddenLayers+1][i]);
+      omega[hiddenLayers+1][i] = targets[trainingSet][i]-a[hiddenLayers+1][i];
+   }
+   /*for (int i = 0; i < outputNodes; i++) {
       for (int j = 0; j < hiddenLayerNodes[0]; j++) {
          theta[hiddenLayers+1][i] += a[hiddenLayers][j]*w[hiddenLayers][j][i];
       }
       a[hiddenLayers+1][i] = outputFunc(theta[hiddenLayers+1][i]);
       omega[hiddenLayers+1][i] = targets[trainingSet][i]-a[hiddenLayers+1][i];
       psi[hiddenLayers+1][i] = omega[hiddenLayers+1][i]*dFunc(theta[hiddenLayers+1][i]);
-   }
+   }*/
 }
 
 /**
@@ -191,15 +199,24 @@ void trainNetwork() {
       runNetwork(t);
       for (int i = 0; i < outputNodes; i++)
          outputs[t][i] = a[hiddenLayers+1][i];
-      for (int j = 0; j < hiddenLayerNodes[0]; j++) {
+      
+      /*for (int j = 0; j < hiddenLayerNodes[0]; j++) {
          for (int i = 0; i < outputNodes; i++) {
-            //psi[hiddenLayers+1][i] = omega[hiddenLayers+1][i]*dFunc(theta[hiddenLayers+1][i]);
+            psi[hiddenLayers+1][i] = omega[hiddenLayers+1][i]*dFunc(theta[hiddenLayers+1][i]);
             w[hiddenLayers][j][i] += learningFactor*a[hiddenLayers][j]*psi[hiddenLayers+1][i];
             omega[hiddenLayers][j] += psi[hiddenLayers+1][i]*w[hiddenLayers][j][i];
          }
          psi[hiddenLayers][j] = omega[hiddenLayers][j]*dFunc(theta[hiddenLayers][j]);
+      }*/
+      for (int i = 0; i < outputNodes; i++) {
+         psi[hiddenLayers+1][i] = omega[hiddenLayers+1][i]*dFunc(theta[hiddenLayers+1][i]);
+         for (int j = 0; j < hiddenLayerNodes[0]; j++) {
+            w[hiddenLayers][j][i] += learningFactor*a[hiddenLayers][j]*psi[hiddenLayers+1][i];
+            omega[hiddenLayers][j] += psi[hiddenLayers+1][i]*w[hiddenLayers][j][i];
+         }
       }
       for (int j = 0; j < hiddenLayerNodes[0]; j++) {
+         psi[hiddenLayers][j] = omega[hiddenLayers][j]*dFunc(theta[hiddenLayers][j]);
          for (int k = 0; k < inputNodes; k++) {
             w[0][k][j] += learningFactor*a[0][k]*psi[hiddenLayers][j];
          }
