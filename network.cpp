@@ -6,7 +6,7 @@
  * Runtime options are set in the configuration file.
  * Other options, such as network size, are set by the user during runtime.
  * The network can be trained using provided values to determine weights.
- * It uses an adaptive steepest descent for training.
+ * The code implements back propagation.
  */
 #include <iostream>
 #include <fstream>
@@ -38,6 +38,9 @@ vector<vector<vector<double>>> prevW;
 vector<vector<double>> inputs;
 vector<vector<double>> outputs;
 vector<vector<double>> targets;
+vector<vector<double>> theta;
+vector<vector<double>> psi;
+vector<vector<double>> omega;
 double error;
 double prevError;
 double learningFactor;
@@ -61,7 +64,7 @@ double dFunc(double x)
 
 /**
  * Randomizes all the weights using the configured dimensions.
- * Uses a uniform distribution between 0 and the configured maxiumum value to generate values.
+ * Uses a uniform distribution between 0 and the configured maximum value to generate values.
  */
 void randomizeWeights()
 {
@@ -153,6 +156,58 @@ void calculateOutput(int trainingSet)
 } // void calculateOutput
 
 /**
+ * 
+ */
+void runNetwork(int trainingSet) {
+   for (auto &v: theta)
+      fill(v.begin(), v.end(), 0.0);
+   for (auto &v: omega)
+      fill(v.begin(), v.end(), 0.0);
+   for (int j = 0; j < hiddenLayerNodes[0]; j++) {
+      for (int k = 0; k < inputNodes; k++) {
+         theta[hiddenLayers][j] += a[0][k]*w[0][k][j];
+      }
+      a[hiddenLayers][j] = outputFunc(theta[hiddenLayers][j]);
+   }
+   for (int i = 0; i < outputNodes; i++) {
+      for (int j = 0; j < hiddenLayerNodes[0]; j++) {
+         theta[hiddenLayers+1][i] += a[hiddenLayers][j]*w[hiddenLayers][j][i];
+      }
+      a[hiddenLayers+1][i] = outputFunc(theta[hiddenLayers+1][i]);
+      omega[hiddenLayers+1][i] = targets[trainingSet][i]-a[hiddenLayers+1][i];
+      psi[hiddenLayers+1][i] = omega[hiddenLayers+1][i]*dFunc(theta[hiddenLayers+1][i]);
+   }
+}
+
+/**
+ * 
+ */
+void trainNetwork() {
+   for (int t = 0; t < trainingSets; t++) {
+      for (auto &v: psi)
+         fill(v.begin(), v.end(), 0.0);
+      for (int k = 0; k < inputNodes; k++) // fill in the input layer with training values
+         a[0][k] = inputs[t][k];
+      runNetwork(t);
+      for (int i = 0; i < outputNodes; i++)
+         outputs[t][i] = a[hiddenLayers+1][i];
+      for (int j = 0; j < hiddenLayerNodes[0]; j++) {
+         for (int i = 0; i < outputNodes; i++) {
+            //psi[hiddenLayers+1][i] = omega[hiddenLayers+1][i]*dFunc(theta[hiddenLayers+1][i]);
+            w[hiddenLayers][j][i] += learningFactor*a[hiddenLayers][j]*psi[hiddenLayers+1][i];
+            omega[hiddenLayers][j] += psi[hiddenLayers+1][i]*w[hiddenLayers][j][i];
+         }
+         psi[hiddenLayers][j] = omega[hiddenLayers][j]*dFunc(theta[hiddenLayers][j]);
+      }
+      for (int j = 0; j < hiddenLayerNodes[0]; j++) {
+         for (int k = 0; k < inputNodes; k++) {
+            w[0][k][j] += learningFactor*a[0][k]*psi[hiddenLayers][j];
+         }
+      }
+   }
+}
+
+/**
  * Adjusts all the weights in the network by calculating partial derivates and adjusting,
  * based on the learning factor.
  */
@@ -194,7 +249,7 @@ void printOutputs()
       for (int i = 0; i < inputNodes; i++)
          cout << inputs[t][i] << ",";
       for (int i = 0; i < outputNodes; i++)
-         cout << "\t" << outputs[t][i] * 16777216.0;
+         cout << "\t" << outputs[t][i] << " (" << targets[t][i] << ")"; //* 16777216.0;
       cout << endl;
    }
    return;
@@ -267,12 +322,14 @@ int main()
    a.resize(hiddenLayers+2, vector<double>(size)); // 2 for input and output layer
    w.resize(hiddenLayers+1, vector<vector<double>>(size, vector<double>(size)));
    
+   theta.resize(hiddenLayers+2, vector<double>(size));
+   omega.resize(hiddenLayers+2, vector<double>(size));
+   psi.resize(hiddenLayers+2, vector<double>(size));
+   
    cout << "Randomize weights? (Y/n) ";
    cin.ignore();
    string response;
    getline(cin, response);
-   
-   auto start = chrono::high_resolution_clock::now(); // start tracking execution time
    
    if (response.substr(0, 1) == "n" || response.substr(0, 1) == "N")
    {
@@ -297,6 +354,8 @@ int main()
    cout << endl << "Initial weights:" << endl;
    printWeights();
    
+   auto start = chrono::high_resolution_clock::now(); // start tracking execution time
+   
    // read training data file
    ifstream training(trainingFile);
    training >> trainingSets;
@@ -309,25 +368,28 @@ int main()
       for (int i = 0; i < inputNodes; i++)
       {
          training >> inputs[t][i];
-         inputs[t][i] /= 16777216.0;
+         //inputs[t][i] /= 16777216.0;
       }
       for (int i = 0; i < outputNodes; i++)
       {
          training >> targets[t][i];
-         targets[t][i] /= 16777216.0;
+         //targets[t][i] /= 16777216.0;
       }
    }
    training.close();
    
    outputs.resize(trainingSets, vector<double>(outputNodes));
-   for (int t = 0; t < trainingSets; t++) // compute network for each training set
+   /*for (int t = 0; t < trainingSets; t++) // run network for each training set
    {
-      calculateOutput(t);
+      for (int k = 0; k < inputNodes; k++) // fill in the input layer with training values
+         a[0][k] = inputs[t][k];
+      //calculateOutput(t);
+      runNetwork(t);
       for (int i = 0; i < outputNodes; i++)
          outputs[t][i] = a[hiddenLayers+1][i];
-   }
-   error = calculateError();
-   prevW = w;
+   }*/
+   error = __DBL_MAX__;
+   //prevW = w;
    
    int index = 0;
    int iterations = 1;
@@ -337,18 +399,19 @@ int main()
       
       if (index >= trainingSets)           // set to 0 if index exceeds max sets
          index = 0;
-      for (int k = 0; k < inputNodes; k++) // fill in input layer
-         a[0][k] = inputs[index][k];
+      /*for (int k = 0; k < inputNodes; k++) // fill in input layer
+         a[0][k] = inputs[index][k];*/
       
-      calculateOutput(index);
-      adjustWeights(index);
+      //calculateOutput(index);
+      //adjustWeights(index);
+      trainNetwork();
       
-      for (int t = 0; t < trainingSets; t++) // compute network for each training set
+      /*for (int t = 0; t < trainingSets; t++) // compute network for each training set
       {
-         calculateOutput(t);
+         //calculateOutput(t);
          for (int i = 0; i < outputNodes; i++)
             outputs[t][i] = a[hiddenLayers+1][i];
-      }
+      }*/
       
       error = calculateError();
       if (error < prevError || SKIP_ROLLBACK)
@@ -393,7 +456,7 @@ int main()
    ofstream outFile;
    outFile.open("out.txt");
    for (int i = 0; i < outputNodes; i++)
-      outFile << outputs[0][i] * 16777216.0 << "\n";
+      outFile << outputs[0][i] /* * 16777216.0 */ << "\n";
    cout << endl << "Weights:" << endl;
    printWeights();
    cout << endl << "Outputs:" << endl;
