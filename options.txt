@@ -8,6 +8,7 @@
 1000
 1E-2
 0
+./finalWeights.txt
 ---------------
 RUNTIME OPTIONS
 ---------------
@@ -21,3 +22,4 @@ MAX_LEARN:        learning factor will be capped at this value
 MAX_ITERATIONS:   maximum number of iterations (for termination conditions)
 ERR_THRESHOLD:    threshold for the total error (for termination conditions)
 ROLLBACK_WEIGHTS: whether to roll back weights (0 for no, 1 for yes)
+WEIGHTS_FILE_OUT: file to print out final weights

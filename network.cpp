@@ -26,12 +26,14 @@ double MAX_LEARN;
 int MAX_ITERATIONS;
 double ERR_THRESHOLD;
 bool SKIP_ROLLBACK = false;
+string WEIGHTS_FILE_OUT;
 
 int inputNodes;
 int outputNodes;
 int hiddenLayers;
 int trainingSets;
 vector<int> hiddenLayerNodes;
+vector<int> layerSizes;
 vector<vector<double>> a;
 vector<vector<vector<double>>> w;
 vector<vector<vector<double>>> prevW;
@@ -71,7 +73,7 @@ void randomizeWeights()
    random_device rd;
    mt19937 mt(rd());
    uniform_real_distribution<double> rand(MIN_RAND, MAX_RAND);
-   //normal_distribution<double> rand(1.0, 0.5);
+   //normal_distribution<double> rand(0.0, 1.0);
    
    for (int k = 0; k < inputNodes; k++)
       for (int j = 0; j < hiddenLayerNodes[0]; j++)
@@ -117,10 +119,9 @@ double calculateOutputDerivative(int j, int i, int trainingSet)
 double calculateError()
 {
    double error = 0.0;
-   for (int t = 0; t < trainingSets; t++)
-      for (int i = 0; i < outputNodes; i++)
-      error += (targets[t][i] - outputs[t][i]) * (targets[t][i] - outputs[t][i]);
-   return sqrt(error / 2.0);
+   for (int i = 0; i < outputNodes; i++)
+      error += omega[hiddenLayers+1][i] * omega[hiddenLayers+1][i];
+   return error / 2.0;
 }
 
 /**
@@ -164,7 +165,7 @@ void runNetwork(int trainingSet) {
    for (auto &v: omega)
       fill(v.begin(), v.end(), 0.0);
    
-   for (int i = 0; i < outputNodes; i++) {
+   /*for (int i = 0; i < outputNodes; i++) {
       for (auto &v: theta)
          fill(v.begin(), v.end(), 0.0);
       for (int j = 0; j < hiddenLayerNodes[0]; j++) {
@@ -176,7 +177,7 @@ void runNetwork(int trainingSet) {
       }
       a[hiddenLayers+1][i] = outputFunc(theta[hiddenLayers+1][i]);
       omega[hiddenLayers+1][i] = targets[trainingSet][i]-a[hiddenLayers+1][i];
-   }
+   }*/
    /*for (int i = 0; i < outputNodes; i++) {
       for (int j = 0; j < hiddenLayerNodes[0]; j++) {
          theta[hiddenLayers+1][i] += a[hiddenLayers][j]*w[hiddenLayers][j][i];
@@ -185,6 +186,14 @@ void runNetwork(int trainingSet) {
       omega[hiddenLayers+1][i] = targets[trainingSet][i]-a[hiddenLayers+1][i];
       psi[hiddenLayers+1][i] = omega[hiddenLayers+1][i]*dFunc(theta[hiddenLayers+1][i]);
    }*/
+   for (int alpha = 1; alpha <= hiddenLayers+1; alpha++) {
+      for (int beta = 0; beta < layerSizes[alpha]; beta++) {
+         for (int gamma = 0; gamma < layerSizes[alpha-1]; gamma++) {
+            theta[alpha][beta] += a[alpha-1][gamma]*w[alpha-1][gamma][beta];
+         }
+         a[alpha][beta] = outputFunc(theta[alpha][beta]);
+      }
+   }
 }
 
 /**
@@ -208,7 +217,7 @@ void trainNetwork() {
          }
          psi[hiddenLayers][j] = omega[hiddenLayers][j]*dFunc(theta[hiddenLayers][j]);
       }*/
-      for (int i = 0; i < outputNodes; i++) {
+      /*for (int i = 0; i < outputNodes; i++) {
          psi[hiddenLayers+1][i] = omega[hiddenLayers+1][i]*dFunc(theta[hiddenLayers+1][i]);
          for (int j = 0; j < hiddenLayerNodes[0]; j++) {
             w[hiddenLayers][j][i] += learningFactor*a[hiddenLayers][j]*psi[hiddenLayers+1][i];
@@ -219,6 +228,34 @@ void trainNetwork() {
          psi[hiddenLayers][j] = omega[hiddenLayers][j]*dFunc(theta[hiddenLayers][j]);
          for (int k = 0; k < inputNodes; k++) {
             w[0][k][j] += learningFactor*a[0][k]*psi[hiddenLayers][j];
+         }
+      }*/
+      
+      for (int i = 0; i < outputNodes; i++) {
+         omega[hiddenLayers+1][i] = targets[t][i]-a[hiddenLayers+1][i];
+         psi[hiddenLayers+1][i] = omega[hiddenLayers+1][i]*dFunc(theta[hiddenLayers+1][i]);
+         for (int j = 0; j < layerSizes[hiddenLayers]; j++) {
+            w[hiddenLayers][j][i] += learningFactor*a[hiddenLayers][j]*psi[hiddenLayers+1][i];
+         }
+      }
+      /*for (int alpha = hiddenLayers; alpha > 0; alpha--) {
+         for (int beta = 0; beta < layerSizes[alpha+1]; beta++) {
+            psi[alpha+1][beta] = omega[alpha+1][beta]*dFunc(theta[alpha+1][beta]);
+            for (int gamma = 0; gamma < layerSizes[alpha]; gamma++) {
+               w[alpha][gamma][beta] += learningFactor*a[alpha][gamma]*psi[alpha+1][beta];
+               omega[alpha][gamma] += psi[alpha+1][beta]*w[alpha][gamma][beta];
+            }
+         }
+      }*/
+      for (int alpha = hiddenLayers; alpha > 0; alpha--) {
+         for (int beta = 0; beta < layerSizes[alpha]; beta++) {
+            for (int right = 0; right < layerSizes[alpha+1]; right++) {
+               omega[alpha][beta] += psi[alpha+1][right]*w[alpha][beta][right];
+            }
+            psi[alpha][beta] = omega[alpha][beta]*dFunc(theta[alpha][beta]);
+            for (int left = 0; left < layerSizes[alpha-1]; left++) {
+               w[alpha-1][left][beta] += learningFactor*a[alpha-1][left]*psi[alpha][beta];
+            }
          }
       }
    }
@@ -243,16 +280,18 @@ void adjustWeights(int trainingSet)
 /**
  * Prints all the weights, in addition to the indexes they correspond with.
  */
-void printWeights()
+void printWeights(string weightsFile)
 {
-   /*for (int n = 0; n < hiddenLayers; n++)
+   ofstream out;
+   out.open(weightsFile);
+   for (int n = 0; n < hiddenLayers; n++)
       for (int j = 0; j < hiddenLayerNodes[n]; j++)
          for (int k = 0; k < inputNodes; k++)
-            cout << n << "," << k << "," << j << " " << w[n][k][j] << endl;
+            out << n << "," << k << "," << j << " " << w[n][k][j] << endl;
    
    for (int i = 0; i < outputNodes; i++)
       for (int j = 0; j < hiddenLayerNodes[hiddenLayers-1]; j++)
-         cout << hiddenLayers << "," << j << "," << i << " " << w[hiddenLayers][j][i] << endl;*/
+         out << hiddenLayers << "," << j << "," << i << " " << w[hiddenLayers][j][i] << endl;
    return;
 }
 
@@ -283,7 +322,7 @@ int main()
    //ios_base::sync_with_stdio(false);
    //cin.tie(0);
    
-   cout << "Press return to use defaults (indicated in parentheses)." << endl;
+   cout << "Press enter to use defaults (indicated in parentheses)." << endl;
    
    cout << "Configuration file: (./options.txt) ";
    string optionsFile;
@@ -308,6 +347,7 @@ int main()
    options >> MAX_LEARN;
    options >> MAX_ITERATIONS;
    options >> ERR_THRESHOLD;
+   options >> WEIGHTS_FILE_OUT;
    int weightsRollback;
    options >> weightsRollback;
    if (weightsRollback == 0)
@@ -324,10 +364,14 @@ int main()
    cin >> hiddenLayers;
    
    hiddenLayerNodes.resize(hiddenLayers);
+   layerSizes.resize(hiddenLayers+2);
+   layerSizes[0] = inputNodes;
+   layerSizes[hiddenLayers+1] = outputNodes;
    for (int i = 0; i < hiddenLayers; i++)
    {
       cout << "Nodes in hidden layer "+to_string(i)+": "; // prompt the user for each of the hidden layers
       cin >> hiddenLayerNodes[i];
+      layerSizes[i+1] = hiddenLayerNodes[i];
    }
    
    // determine the array size needed
@@ -368,8 +412,7 @@ int main()
    }
    else
       randomizeWeights();
-   cout << endl << "Initial weights:" << endl;
-   printWeights();
+   //printWeights(WEIGHTS_FILE_INIT);
    
    auto start = chrono::high_resolution_clock::now(); // start tracking execution time
    
@@ -474,8 +517,7 @@ int main()
    outFile.open("out.txt");
    for (int i = 0; i < outputNodes; i++)
       outFile << outputs[0][i] /* * 16777216.0 */ << "\n";
-   cout << endl << "Weights:" << endl;
-   printWeights();
+   printWeights(WEIGHTS_FILE_OUT);
    cout << endl << "Outputs:" << endl;
    printOutputs();
    
