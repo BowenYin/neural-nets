@@ -7,7 +7,19 @@
  * Other options, such as network size, are set by the user during runtime.
  * The network can be trained using provided values to determine weights.
  * The code implements back propagation.
+ * 
+ * List of methods:
+ * double outputFunc(double x): Performs the threshold function on a value, used for each activation calculation.
+ * double dFunc(double x): Performs the derivative of the threshold function on a value.
+ * void randomizeWeights(): Randomizes all the weights using the configured dimensions.
+ * double calculateError(): Calculates the total error of the network, using training data.
+ * void runNetwork(int tSet): Runs the network on a specific training set by propagating values forwards.
+ * void trainNetwork(): Trains the network using back propagation on each training set.
+ * void printWeights(string file): Prints all of the weights to a file.
+ * void printOutputs(): Prints all of the outputs to standard output.
+ * int main(): Main method that handles all user interface interactions and configures/runs the network.
  */
+
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -86,34 +98,6 @@ void randomizeWeights()
 } // void randomizeWeights
 
 /**
- * Calculates the partial derivative for a weight between an input and a hidden layer.
- */
-double calculateInputDerivative(int k, int j, int trainingSet)
-{
-   // sum of activations times weights for input layer
-   double sum1 = 0.0;
-   for (int K = 0; K < inputNodes; K++)
-      sum1 += a[0][K] * w[0][K][j];
-   
-   // second summation for calculating the partial
-   double sum2 = 0.0;
-   for (int I = 0; I < outputNodes; I++)
-      sum2 += (targets[trainingSet][I] - outputs[trainingSet][I]) * dFunc(outputs[trainingSet][I]) * w[hiddenLayers][j][I];
-   
-   double partial = -a[0][k] * dFunc(sum1) * sum2;
-   return partial;
-} // double calculateInputDerivative
-
-/**
- * Calculates the partial derivative for a weight between a hidden layer and an output.
- */
-double calculateOutputDerivative(int j, int i, int trainingSet)
-{
-   double partial = -(targets[trainingSet][i] - outputs[trainingSet][i]) * dFunc(outputs[trainingSet][i]) * a[hiddenLayers][j];
-   return partial;
-}
-
-/**
  * Calculates the total error of the network, using target values from the training data.
  */
 double calculateError()
@@ -125,82 +109,34 @@ double calculateError()
 }
 
 /**
- * Calculates the output values in a preconfigured network.
- * Loops through each of the layers and fill in the activations.
+ * Runs the network on a specific training set by propagating values forward and
+ * updates activations with new values as necessary.
  */
-void calculateOutput(int trainingSet)
+void runNetwork(int trainingSet)
 {
-   for (int k = 0; k < inputNodes; k++) // fill in the input layer with training values
-      a[0][k] = inputs[trainingSet][k];
-   
-   for (int n = 0; n < hiddenLayers; n++)           // compute each of the hidden layers
-      for (int j = 0; j < hiddenLayerNodes[n]; j++) // loop through each node in the layer
-      {
-         //cout << "DEBUG: a[" << n+1 << "][" << j << "] =";
-         double sum = 0.0;
-         for (int k = 0; k < inputNodes; k++) // loop through previous layer
-         {
-            //cout << " a[" << n << "][" << k << "] * w[" << n << "][" << k << "][" << j << "] +";
-            sum += a[n][k] * w[n][k][j];
-         }
-         //cout << endl;
-         a[n+1][j] = outputFunc(sum);    // perform activation function on the dot product
-      }
-   
-   for (int i = 0; i < outputNodes; i++) // compute the final layer of outputs
-   {
-      double sum = 0.0;
-      for (int j = 0; j < hiddenLayerNodes[hiddenLayers-1]; j++) // loop through last hidden layer
-         sum += a[hiddenLayers][j] * w[hiddenLayers][j][i];
-      a[hiddenLayers+1][i] = outputFunc(sum);
-   }
-} // void calculateOutput
-
-/**
- * 
- */
-void runNetwork(int trainingSet) {
    for (auto &v: theta)
       fill(v.begin(), v.end(), 0.0);
    for (auto &v: omega)
       fill(v.begin(), v.end(), 0.0);
    
-   /*for (int i = 0; i < outputNodes; i++) {
-      for (auto &v: theta)
-         fill(v.begin(), v.end(), 0.0);
-      for (int j = 0; j < hiddenLayerNodes[0]; j++) {
-         for (int k = 0; k < inputNodes; k++) {
-            theta[hiddenLayers][j] += a[0][k]*w[0][k][j];
-         }
-         a[hiddenLayers][j] = outputFunc(theta[hiddenLayers][j]);
-         theta[hiddenLayers+1][i] += a[hiddenLayers][j]*w[hiddenLayers][j][i];
-      }
-      a[hiddenLayers+1][i] = outputFunc(theta[hiddenLayers+1][i]);
-      omega[hiddenLayers+1][i] = targets[trainingSet][i]-a[hiddenLayers+1][i];
-   }*/
-   /*for (int i = 0; i < outputNodes; i++) {
-      for (int j = 0; j < hiddenLayerNodes[0]; j++) {
-         theta[hiddenLayers+1][i] += a[hiddenLayers][j]*w[hiddenLayers][j][i];
-      }
-      a[hiddenLayers+1][i] = outputFunc(theta[hiddenLayers+1][i]);
-      omega[hiddenLayers+1][i] = targets[trainingSet][i]-a[hiddenLayers+1][i];
-      psi[hiddenLayers+1][i] = omega[hiddenLayers+1][i]*dFunc(theta[hiddenLayers+1][i]);
-   }*/
-   for (int alpha = 1; alpha <= hiddenLayers+1; alpha++) {
-      for (int beta = 0; beta < layerSizes[alpha]; beta++) {
-         for (int gamma = 0; gamma < layerSizes[alpha-1]; gamma++) {
+   for (int alpha = 1; alpha <= hiddenLayers+1; alpha++)
+      for (int beta = 0; beta < layerSizes[alpha]; beta++)
+      {
+         for (int gamma = 0; gamma < layerSizes[alpha-1]; gamma++)
             theta[alpha][beta] += a[alpha-1][gamma]*w[alpha-1][gamma][beta];
-         }
          a[alpha][beta] = outputFunc(theta[alpha][beta]);
       }
-   }
-}
+   return;
+} // void runNetwork
 
 /**
- * 
+ * Trains the network with back propagation.
+ * Loops through each training set and calculates weight changes as required.
  */
-void trainNetwork() {
-   for (int t = 0; t < trainingSets; t++) {
+void trainNetwork()
+{
+   for (int t = 0; t < trainingSets; t++)
+   {
       for (auto &v: psi)
          fill(v.begin(), v.end(), 0.0);
       for (int k = 0; k < inputNodes; k++) // fill in the input layer with training values
@@ -209,73 +145,25 @@ void trainNetwork() {
       for (int i = 0; i < outputNodes; i++)
          outputs[t][i] = a[hiddenLayers+1][i];
       
-      /*for (int j = 0; j < hiddenLayerNodes[0]; j++) {
-         for (int i = 0; i < outputNodes; i++) {
-            psi[hiddenLayers+1][i] = omega[hiddenLayers+1][i]*dFunc(theta[hiddenLayers+1][i]);
-            w[hiddenLayers][j][i] += learningFactor*a[hiddenLayers][j]*psi[hiddenLayers+1][i];
-            omega[hiddenLayers][j] += psi[hiddenLayers+1][i]*w[hiddenLayers][j][i];
-         }
-         psi[hiddenLayers][j] = omega[hiddenLayers][j]*dFunc(theta[hiddenLayers][j]);
-      }*/
-      /*for (int i = 0; i < outputNodes; i++) {
-         psi[hiddenLayers+1][i] = omega[hiddenLayers+1][i]*dFunc(theta[hiddenLayers+1][i]);
-         for (int j = 0; j < hiddenLayerNodes[0]; j++) {
-            w[hiddenLayers][j][i] += learningFactor*a[hiddenLayers][j]*psi[hiddenLayers+1][i];
-            omega[hiddenLayers][j] += psi[hiddenLayers+1][i]*w[hiddenLayers][j][i];
-         }
-      }
-      for (int j = 0; j < hiddenLayerNodes[0]; j++) {
-         psi[hiddenLayers][j] = omega[hiddenLayers][j]*dFunc(theta[hiddenLayers][j]);
-         for (int k = 0; k < inputNodes; k++) {
-            w[0][k][j] += learningFactor*a[0][k]*psi[hiddenLayers][j];
-         }
-      }*/
-      
-      for (int i = 0; i < outputNodes; i++) {
+      for (int i = 0; i < outputNodes; i++)
+      {
          omega[hiddenLayers+1][i] = targets[t][i]-a[hiddenLayers+1][i];
          psi[hiddenLayers+1][i] = omega[hiddenLayers+1][i]*dFunc(theta[hiddenLayers+1][i]);
-         for (int j = 0; j < layerSizes[hiddenLayers]; j++) {
+         for (int j = 0; j < layerSizes[hiddenLayers]; j++)
             w[hiddenLayers][j][i] += learningFactor*a[hiddenLayers][j]*psi[hiddenLayers+1][i];
-         }
       }
-      /*for (int alpha = hiddenLayers; alpha > 0; alpha--) {
-         for (int beta = 0; beta < layerSizes[alpha+1]; beta++) {
-            psi[alpha+1][beta] = omega[alpha+1][beta]*dFunc(theta[alpha+1][beta]);
-            for (int gamma = 0; gamma < layerSizes[alpha]; gamma++) {
-               w[alpha][gamma][beta] += learningFactor*a[alpha][gamma]*psi[alpha+1][beta];
-               omega[alpha][gamma] += psi[alpha+1][beta]*w[alpha][gamma][beta];
-            }
-         }
-      }*/
-      for (int alpha = hiddenLayers; alpha > 0; alpha--) {
-         for (int beta = 0; beta < layerSizes[alpha]; beta++) {
-            for (int right = 0; right < layerSizes[alpha+1]; right++) {
+      for (int alpha = hiddenLayers; alpha > 0; alpha--)
+         for (int beta = 0; beta < layerSizes[alpha]; beta++)
+         {
+            for (int right = 0; right < layerSizes[alpha+1]; right++)
                omega[alpha][beta] += psi[alpha+1][right]*w[alpha][beta][right];
-            }
             psi[alpha][beta] = omega[alpha][beta]*dFunc(theta[alpha][beta]);
-            for (int left = 0; left < layerSizes[alpha-1]; left++) {
+            for (int left = 0; left < layerSizes[alpha-1]; left++)
                w[alpha-1][left][beta] += learningFactor*a[alpha-1][left]*psi[alpha][beta];
-            }
          }
-      }
    }
-}
-
-/**
- * Adjusts all the weights in the network by calculating partial derivates and adjusting,
- * based on the learning factor.
- */
-void adjustWeights(int trainingSet)
-{
-   for (int k = 0; k < inputNodes; k++)
-      for (int j = 0; j < hiddenLayerNodes[0]; j++)
-         w[0][k][j] -= learningFactor * calculateInputDerivative(k, j, trainingSet);
-   
-   for (int j = 0; j < hiddenLayerNodes[hiddenLayers-1]; j++)
-      for (int i = 0; i < outputNodes; i++)
-         w[hiddenLayers][j][i] -= learningFactor * calculateOutputDerivative(j, i, trainingSet);
    return;
-}
+} // void trainNetwork
 
 /**
  * Prints all the weights, in addition to the indexes they correspond with.
@@ -293,7 +181,7 @@ void printWeights(string weightsFile)
       for (int j = 0; j < hiddenLayerNodes[hiddenLayers-1]; j++)
          out << hiddenLayers << "," << j << "," << i << " " << w[hiddenLayers][j][i] << endl;
    return;
-}
+} // void printWeights
 
 /**
  * Prints the outputs for each training set.
@@ -313,8 +201,8 @@ void printOutputs()
 
 /**
  * Main method that creates the activation arrays and calculates the hidden and final values.
- * It first prompts the user for input and reads from the input file, then it prints out the final result after calculating.
- * Performs a steepest descent using training data.
+ * It first prompts the user for input and reads from the input file,
+ * then it prints out the final result after calculating.
  */
 int main()
 {
@@ -439,15 +327,6 @@ int main()
    training.close();
    
    outputs.resize(trainingSets, vector<double>(outputNodes));
-   /*for (int t = 0; t < trainingSets; t++) // run network for each training set
-   {
-      for (int k = 0; k < inputNodes; k++) // fill in the input layer with training values
-         a[0][k] = inputs[t][k];
-      //calculateOutput(t);
-      runNetwork(t);
-      for (int i = 0; i < outputNodes; i++)
-         outputs[t][i] = a[hiddenLayers+1][i];
-   }*/
    error = __DBL_MAX__;
    //prevW = w;
    
@@ -459,19 +338,7 @@ int main()
       
       if (index >= trainingSets)           // set to 0 if index exceeds max sets
          index = 0;
-      /*for (int k = 0; k < inputNodes; k++) // fill in input layer
-         a[0][k] = inputs[index][k];*/
-      
-      //calculateOutput(index);
-      //adjustWeights(index);
       trainNetwork();
-      
-      /*for (int t = 0; t < trainingSets; t++) // compute network for each training set
-      {
-         //calculateOutput(t);
-         for (int i = 0; i < outputNodes; i++)
-            outputs[t][i] = a[hiddenLayers+1][i];
-      }*/
       
       error = calculateError();
       if (error < prevError || SKIP_ROLLBACK)
@@ -516,7 +383,7 @@ int main()
    ofstream outFile;
    outFile.open("out.txt");
    for (int i = 0; i < outputNodes; i++)
-      outFile << outputs[0][i] /* * 16777216.0 */ << "\n";
+      outFile << outputs[0][i] /* * 16777216.0 commented out for bitmap */ << "\n";
    printWeights(WEIGHTS_FILE_OUT);
    cout << endl << "Outputs:" << endl;
    printOutputs();
