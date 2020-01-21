@@ -65,7 +65,7 @@ double learningFactor;
  */
 double outputFunc(double x)
 {
-   return 1.0 / (1.0 + exp(-x));
+   return 1.0 / (1.0+exp(-x));
 }
 
 /**
@@ -73,7 +73,8 @@ double outputFunc(double x)
  */
 double dFunc(double x)
 {
-   return outputFunc(x) * (1.0 - outputFunc(x));
+   double val = outputFunc(x);
+   return val * (1.0-val);
 }
 
 /**
@@ -114,14 +115,11 @@ double calculateError()
  */
 void runNetwork(int trainingSet)
 {
-   for (auto &v: theta)
-      fill(v.begin(), v.end(), 0.0);
-   for (auto &v: omega)
-      fill(v.begin(), v.end(), 0.0);
-   
    for (int alpha = 1; alpha <= hiddenLayers+1; alpha++)
       for (int beta = 0; beta < layerSizes[alpha]; beta++)
       {
+         theta[alpha][beta] = 0.0;
+         
          for (int gamma = 0; gamma < layerSizes[alpha-1]; gamma++)
             theta[alpha][beta] += a[alpha-1][gamma]*w[alpha-1][gamma][beta];
          a[alpha][beta] = outputFunc(theta[alpha][beta]);
@@ -137,8 +135,6 @@ void trainNetwork()
 {
    for (int t = 0; t < trainingSets; t++)
    {
-      for (auto &v: psi)
-         fill(v.begin(), v.end(), 0.0);
       for (int k = 0; k < inputNodes; k++) // fill in the input layer with training values
          a[0][k] = inputs[t][k];
       runNetwork(t);
@@ -155,6 +151,8 @@ void trainNetwork()
       for (int alpha = hiddenLayers; alpha > 0; alpha--)
          for (int beta = 0; beta < layerSizes[alpha]; beta++)
          {
+            omega[alpha][beta] = 0.0;
+            
             for (int right = 0; right < layerSizes[alpha+1]; right++)
                omega[alpha][beta] += psi[alpha+1][right]*w[alpha][beta][right];
             psi[alpha][beta] = omega[alpha][beta]*dFunc(theta[alpha][beta]);
